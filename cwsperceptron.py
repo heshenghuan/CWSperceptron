@@ -173,16 +173,17 @@ class CWSPerceptron:
                 score[key] += featureVec[d] * self.alpha[key][d]
         return score
         
-    def getEmitPrb(self, vec, score):
-        norm = 0.
-        for key in vec.keys():
-            norm += pow(vec[key],2)
-        norm = math.sqrt(norm)
-        
+    def getEmitPrb(self, score):
+        """
+        get emits_prb use softmax function
+        """
+        max_score = max(score.values())
         emit_prb = {}
+        expsum = 0.
         for key in score.keys():
-            cos_similar = score[key]/(norm * self.alpha_norm[key])
-            emit_prb[key] = 1 - (math.acos(cos_similar)/math.pi)
+            expsum += math.exp(score[key]/max_score)
+        for key in score.keys():
+            emit_prb[key] = math.exp(score[key]/max_score)/expsum
         return emit_prb
     
     def ViterbiDecode(self,sentence):
@@ -384,24 +385,25 @@ def Gen(sent):
 
 if __name__ == '__main__':
     cws = CWSPerceptron()
-    cws.preDeal(r'.\\training\\pku_training.utf8')
+    #cws.preDeal(r'.\\training\\pku_training.utf8')
     #inputs = open(r"cwsp.pkl",'rb')
     #cws = load(inputs)
-    print u"语料数量：", cws.corpus_num
-    print u"特征数量：",cws.feat_num
-    print u"初始概率："
-    for i in cws.init_prb:
-        print i, cws.init_prb[i]
-    print u"转移概率："
-    for i in cws.trans_prb: 
-        print i, cws.trans_prb[i]
-    cws.makelibsvmdata(r'pku_training.data')
+#    print u"语料数量：", cws.corpus_num
+#    print u"特征数量：",cws.feat_num
+#    print u"初始概率："
+#    for i in cws.init_prb:
+#        print i, cws.init_prb[i]
+#    print u"转移概率："
+#    for i in cws.trans_prb: 
+#        print i, cws.trans_prb[i]
+    #cws.makelibsvmdata(r'pku_training.data')
     #cws.train(2000,10,1.0)
     #taglist = cws.ViterbiDecode(cws.corpus[3])
-    output = open(r"cwsp.pkl",'wb')
-    dump(cws, output, -1)
-    output.close()
-    
+#    output = open(r"cwsp.pkl",'wb')
+#    dump(cws, output, -1)
+#    output.close()
+    score = {'B':2200.84,'M':-884.66,'E':1389.7,'S':264.3}
+    print cws.getEmitPrb(score)
 #    error_count = 0
 #    tagnums = sum(len(s) for s in cws.corpus[0:100])
 #    for i in range(100):
