@@ -1,6 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 """
-Created on Sat Jun 13 14:54:33 2015
+Created on Mon May 04 13:55:33 2015
 
 @author: heshenghuan
 """
@@ -110,6 +110,7 @@ class CWSPerceptron:
             if i>1:
                 self.perceptron.loadWeights()
                 self.perceptron.loadLabelSet()
+            print "reading training file",i
             self.perceptron.read_train_file(trainfile+str(i))
             self.perceptron.printinfo()
             #self.perceptron.train_mini_batch(1000,500,0.01,10,False)
@@ -266,9 +267,15 @@ class CWSPerceptron:
         get feature vector from feature
         the paramters feats mean is a list of features of every character
         """
+        punctuation = [u'。',u'，',u'？',u'！',u'、',u'；',u'：',u'「','」',
+                       u'『',u'』',u'‘',u'’',u'“',u'”',u'（',u'）',u'〔',
+                       u'〕',u'【',u'】',u'——',u'–',u'…',u'．',u'·',u'《',
+                       u'》',u'〈',u'〉']
         featVecs = []
         for feat in feats:
             featVec = {}
+            if feat[2] in punctuation:
+                featVec[0] = 1
             for it in range(len(feat)):
                 if it < 5:
                     if self.unigram_feat_id.has_key(feat[it]):
@@ -392,3 +399,31 @@ class CWSPerceptron:
                 self.trans_prb[x][y] = float(self.trans_prb[x][y])/tmpsum
         self.dimension = self.unigram_feat_num*5 + self.bigram_feat_num*5
         print "\nProcess of pretreatment finished."
+                
+if __name__ == '__main__':
+    cws = CWSPerceptron()
+    cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')
+    
+    #cws.loadModel()
+    print u"语料数量：\t", cws.corpus_num
+    print u"unigram特征数量：\t",cws.unigram_feat_num
+    print u"bigram特征数量：\t",cws.bigram_feat_num
+    print u"特征空间维度： \t", cws.dimension
+    print u"初始概率："
+    for i in cws.init_prb:
+        print i, cws.init_prb[i]
+    print u"转移概率："
+    for i in cws.trans_prb: 
+        print i, cws.trans_prb[i]
+    
+    count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\data',-1)
+    print 'generate',count,'training data file.'
+    cws.saveModel()
+    cws.train(r'.\\FDU_NLPCC2015_Final\\training\\data',count,5000,500,1,0.1,False)        
+    cws.loadModel()
+    cws.loadCorpus(r'.\\FDU_NLPCC2015_Final\\test\\test-Gold-SEG.utf8')
+    cws.perceptron.loadFeatSize(cws.dimension,4)
+    cws.perceptron.loadLabelSet()
+    cws.perceptron.loadWeights()
+    cws.segmentation(r"FDU_seg.utf8")
+    del cws
