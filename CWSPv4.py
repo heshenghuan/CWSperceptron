@@ -165,14 +165,14 @@ class CWSPerceptron:
         """
         get emits_prb use softmax function
         """
-        #max_score = max(score.values())
+        max_score = max(score.values())
         emit_prb = {}
         expsum = 0.
         for key in score.keys():
-            #print score[key],
-            expsum += math.exp(score[key])
+            emit_prb[key] = math.exp(score[key]-max_score)
+            expsum += emit_prb[key]
         for key in score.keys():
-            emit_prb[key] = math.exp(score[key])/expsum
+            emit_prb[key] /= expsum
         return emit_prb
     
     def ViterbiDecode(self,sentence):
@@ -402,9 +402,9 @@ class CWSPerceptron:
                 
 if __name__ == '__main__':
     cws = CWSPerceptron()
-    cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')
+    #cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')
     
-    #cws.loadModel()
+    cws.loadModel()
     print u"语料数量：\t", cws.corpus_num
     print u"unigram特征数量：\t",cws.unigram_feat_num
     print u"bigram特征数量：\t",cws.bigram_feat_num
@@ -416,11 +416,11 @@ if __name__ == '__main__':
     for i in cws.trans_prb: 
         print i, cws.trans_prb[i]
     
-    count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\data',-1)
-    print 'generate',count,'training data file.'
-    cws.saveModel()
-    cws.train(r'.\\FDU_NLPCC2015_Final\\training\\data',count,5000,500,1,0.1,False)        
-    cws.loadModel()
+    #count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\data',-1)
+    #print 'generate',count,'training data file.'
+    #cws.saveModel()
+    #cws.train(r'.\\FDU_NLPCC2015_Final\\training\\data',count,5000,500,1,0.1,False)        
+    #cws.loadModel()
     cws.loadCorpus(r'.\\FDU_NLPCC2015_Final\\test\\test-Gold-SEG.utf8')
     cws.perceptron.loadFeatSize(cws.dimension,4)
     cws.perceptron.loadLabelSet()
