@@ -92,7 +92,6 @@ class CWSPerceptron:
         return 1-float(error_count)/tagnums
     
     def segmentation(self, outfile):
-        """Doing segmentation work"""
         output = codecs.open(outfile,'w','utf-8')
         for i in range(self.corpus_num):
             taglist = self.ViterbiDecode(self.corpus[i])
@@ -104,7 +103,6 @@ class CWSPerceptron:
         output.close()
     
     def train(self,trainfile,filenum,batch_num=100, max_iter=200, learn_rate = 0.01, delta_thrd = 0.00001, is_average = True):
-        """Training the perceptron model"""
         #self.makelibsvmdata(r'train.data',max_corpus)
         print "Start training process."
         self.perceptron.loadFeatSize(self.dimension,len(self.state))
@@ -127,7 +125,6 @@ class CWSPerceptron:
         print " "
         
     def makeLibSvmData(self, output_file,corpus_num = -1):
-        """From original corpus make usable data for perceptron"""
         print "Making training data.",
         filecount = 1
         output_data = codecs.open(output_file+str(filecount), 'w')
@@ -165,7 +162,9 @@ class CWSPerceptron:
         #return self.perceptron.probout(featureVec)
         
     def getEmitPrb(self, score):
-        """get emits_prb use softmax function"""
+        """
+        get emits_prb use softmax function
+        """
         max_score = max(score.values())
         emit_prb = {}
         expsum = 0.
@@ -177,7 +176,6 @@ class CWSPerceptron:
         return emit_prb
     
     def ViterbiDecode(self,sentence):
-        """Viterbi decode algorithm"""
         N = len(sentence) #length of the sentence
         prb = 0.
         prb_max = 0.
@@ -308,7 +306,6 @@ class CWSPerceptron:
         return taglist
     
     def tag2word(self, sentence,taglist):
-        """According the tag to rebuild word"""
         wordlist = []
         tmp = ''
         for i in range(len(taglist)):
@@ -361,7 +358,6 @@ class CWSPerceptron:
         print "\nLoading Corpus done."
     
     def pretreatment(self, train_file):
-        """Pretreatment of corpus"""
         print "The process of corpus Pretreatment",
         input_data = codecs.open(train_file, 'r', 'utf-8')
         for line in input_data.readlines():
