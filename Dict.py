@@ -8,6 +8,9 @@ Created on Wed Aug 05 15:40:18 2015
 import codecs
 
 class Dict(object):
+    """
+    Record dictionary information for CWS Perceptron.
+    """
     def __init__(self):
         self.dic = {}
         #self.entry_num = 0
@@ -25,9 +28,9 @@ class Dict(object):
                 taglist.append('E')
         return taglist
     
-    def readDict(self, dict_file):
+    def readDict(self, dictfile):
         print "Loading dict data and building the dictionary for CWSP",
-        input_data = codecs.open(dict_file, 'r', 'utf-8')
+        input_data = codecs.open(dictfile, 'r', 'utf-8')
         entry_num = 0
         for line in input_data.readlines():
             rawText = line.strip()
@@ -52,7 +55,7 @@ class Dict(object):
                         self.dic[word[i]] = [length, tag[i]]
             else:
                 self.dic[word[0]] = [1, "S"]
-        print "\nLoading Corpus done."
+        print "\nLoading dictionary done."
         
     def saveDict(self, outfile):
         """Save the dictionary information"""
@@ -78,3 +81,27 @@ class Dict(object):
                 entry_num += 1
             word = rawText.split()      #remove the space
             self.dic[word[0]] = [int(word[1]), word[2]]
+            
+    def appendDict(self, dictfile):
+        print "Loading dict data, appending to the dictionary for CWSP",
+        input_data = codecs.open(dictfile, 'r', 'utf-8')
+        entry_num = len(self.dic)
+        for line in input_data.readlines():
+            rawText = line.strip()
+            if rawText == '':
+                continue
+            else:
+                entry_num += 1
+            if entry_num%1000 == 0 and entry_num !=0:
+                print '.',
+            word = rawText.split()[0]      #remove the space
+            length = len(word)
+            tag = self.getTag([word])
+            for i in range(length):
+                if self.dic.has_key(word[i]):
+                    info = self.dic[word[i]]
+                    if length > info[0]:
+                        self.dic[word[i]] = [length, tag[i]]
+                else:
+                    self.dic[word[i]] = [length, tag[i]]
+        print "\nLoading dictionary done."
