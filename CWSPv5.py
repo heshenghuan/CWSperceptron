@@ -100,6 +100,9 @@ class CWSPerceptron:
         
     def readDict(self,dictfile):
         self.dict.readDict(dictfile)
+        
+    def appendDict(self,dictfile):
+        self.dict.appendDict(dictfile)
     
     def evaluate(self, corpus = 200):
         error_count = 0
@@ -138,7 +141,7 @@ class CWSPerceptron:
             if i>1:
                 self.perceptron.loadWeights()
                 self.perceptron.loadLabelSet()
-            print "reading training file",i
+            print "\nreading training file",i
             self.perceptron.read_train_file(trainfile+str(i))
             self.perceptron.printinfo()
             #self.perceptron.train_mini_batch(1000,500,0.01,10,False)
@@ -453,8 +456,8 @@ class CWSPerceptron:
 if __name__ == '__main__':
     cws = CWSPerceptron()
     cws.loadDict(r"dic.utf8")   #generate dict step must be the first step
-    cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')    
-    #cws.loadModel()
+#    cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')    
+    cws.loadModel()
     print u"语料数量：\t", cws.corpus_num
     print u"unigram特征数量：\t",cws.unigram_feat_num
     print u"bigram特征数量：\t",cws.bigram_feat_num
@@ -468,11 +471,11 @@ if __name__ == '__main__':
         print i, cws.trans_prb[i]
     
     
-    count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\dictdata',-1)
-    print 'generate',count,'training data file.'
-    cws.saveModel()
-    cws.train(r'.\\FDU_NLPCC2015_Final\\training\\dictdata',count,5000,500,1,0.1,False)        
-    cws.loadModel()
+#    count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\dictdata',-1)
+#    print 'generate',count,'training data file.'
+#    cws.saveModel()
+#    cws.train(r'.\\FDU_NLPCC2015_Final\\training\\dictdata',count,5000,500,1,0.1,False)        
+#    cws.loadModel()
     cws.loadCorpus(r'.\\FDU_NLPCC2015_Final\\test\\test-Gold-SEG.utf8')
     cws.perceptron.loadFeatSize(cws.dimension,4)
     cws.perceptron.loadLabelSet()
