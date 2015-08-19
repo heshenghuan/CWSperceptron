@@ -241,6 +241,7 @@ class CWSPerceptron:
             for s in self.state:
                 prb = float('-inf')
                 prb_max = float('-inf')
+                state_max = ''
                 for i in self.state:
                     #prb = toward[t-1][i] * self.trans_prb[i][s] * emit_prb[s]
                     if self.trans_prb[i][s] != 0. and emit_prb[s]!=0.:
