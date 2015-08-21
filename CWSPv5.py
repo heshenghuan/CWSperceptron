@@ -39,6 +39,8 @@ class CWSPerceptron:
         self.bigram_feat_id = {}
         self.dict_feat_num = 0
         self.dict_feat_id = {}
+        self.type_feat_num = 0
+        self.type_feat_id = {}
     
     def saveModel(self):
         print "Saving the feature infomation......"
@@ -51,6 +53,9 @@ class CWSPerceptron:
         output3 = open(r"dict_feat_id.pkl",'wb')
         dump(self.dict_feat_id, output3, -1)
         output3.close()
+        output4 = open(r"type_feat_id.pkl",'wb')
+        dump(self.type_feat_id, output4, -1)
+        output4.close()
 
         #release the memory
         self.unigram_feat_id = []
@@ -80,6 +85,9 @@ class CWSPerceptron:
         inputs2 = open(r"dict_feat_id.pkl",'rb')
         self.dict_feat_id = load(inputs2)
         self.dict_feat_num = len(self.dict_feat_id)
+        inputs3 = open(r"type_feat_id.pkl",'rb')
+        self.type_feat_id = load(inputs3)
+        self.type_feat_num = len(self.type_feat_id)
         
         #print "Loading process done."
         print "Loading the prb infomation......"
@@ -90,7 +98,7 @@ class CWSPerceptron:
         self.trans_prb = load(inputs1)
         inputs1.close()
         print "Loading process done."
-        self.dimension = self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*4
+        self.dimension = self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*4 + self.type_feat_num
         
     def loadDict(self,dictfile):
         self.dict.loadDict(dictfile)
@@ -273,6 +281,23 @@ class CWSPerceptron:
             taglist[-1]=='E'
         return taglist
 
+    def GetTypeFeat(self,words):
+        featcode = 0
+        nums = [u"零",u"一",u"二",u"三",u"四",u"五",u"六",u"七",u"八",u"九",u"十",u"百",
+                u"千",u"万",u"亿",u"壹",u"貳",u"叁",u"肆",u"伍",u"陸",u"柒",u"捌",u"玖",
+                u"拾",u"佰",u"仟",u"萬",u"億",u"廿",u"卅"]
+        dates = [u"年",u"月",u"日"]
+        for char in words:
+            if char in nums:
+                featcode = featcode*10 + 1
+            elif char in dates:
+                featcode = featcode*10 + 2
+            elif (u"a" < char and char < u"z") or (u"A" < char and char < u"Z"):
+                featcode = featcode*10 + 3
+            else:
+                featcode = featcode*10 + 4
+        return featcode
+
     def GetFeature(self, sent):
         """
         get feature for every single character
@@ -294,10 +319,12 @@ class CWSPerceptron:
                 MWL = '0'
                 t0 = '#'
             #print MWL,t0
+                
+            featcode = self.GetTypeFeat([left2,left1,mid,right1,right2])
             feat=[left2,left1,mid,right1,right2,
                   left2+left1,left1+mid,mid+right1,
                   right1+right2,left1+right1,MWL+t0,
-                  left1+t0,mid+t0,right1+t0]
+                  left1+t0,mid+t0,right1+t0,featcode]
             #feat=[left1,mid,right1,left1+mid,mid+right1]
             features.append(feat)
         
@@ -327,10 +354,15 @@ class CWSPerceptron:
                         key = self.bigram_feat_id[feat[it]]
                         key += self.unigram_feat_num*5 + self.bigram_feat_num*(it-5)
                         featVec[key] = 1
-                else:
+                elif it < 14:
                     if self.dict_feat_id.has_key(feat[it]):
                         key = self.dict_feat_id[feat[it]]
                         key += self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*(it-10)
+                        featVec[key] = 1
+                else:
+                    if self.type_feat_id.has_key(feat[it]):
+                        key = self.type_feat_id[feat[it]]
+                        key += self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*4
                         featVec[key] = 1
 #                        if key>self.dimension:
 #                            self.dimension = key
@@ -438,10 +470,14 @@ class CWSPerceptron:
                         if not self.bigram_feat_id.has_key(feat[it]):
                             self.bigram_feat_num += 1
                             self.bigram_feat_id[feat[it]] = self.bigram_feat_num
-                    else:  #dictionary information feature
+                    elif it < 14:  #dictionary information feature
                         if not self.dict_feat_id.has_key(feat[it]):
                             self.dict_feat_num += 1
                             self.dict_feat_id[feat[it]] = self.dict_feat_num
+                    else:
+                        if not self.type_feat_id.has_key(feat[it]):
+                            self.type_feat_num += 1
+                            self.type_feat_id[feat[it]] = self.type_feat_num
             
         #calculate the probability of tag
         initsum = sum(self.init_prb.values())
@@ -451,35 +487,36 @@ class CWSPerceptron:
             tmpsum = sum(self.trans_prb[x].values())
             for y in self.trans_prb[x].keys():
                 self.trans_prb[x][y] = float(self.trans_prb[x][y])/tmpsum
-        self.dimension = self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*4
+        self.dimension = self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*4 + self.type_feat_num
         print "\nProcess of pretreatment finished."
                 
 if __name__ == '__main__':
     cws = CWSPerceptron()
     cws.loadDict(r"dic.utf8")   #generate dict step must be the first step
-#    cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')    
-    cws.loadModel()
-    print u"语料数量：\t", cws.corpus_num
-    print u"unigram特征数量：\t",cws.unigram_feat_num
-    print u"bigram特征数量：\t",cws.bigram_feat_num
-    print u"dict特征数量：\t",cws.dict_feat_num
-    print u"特征空间维度： \t", cws.dimension
-    print u"初始概率："
+    cws.pretreatment(r'./FDU_NLPCC2015_Final/train/train-SEG.utf8')    
+    #cws.loadModel()
+    print "corpus:\t", cws.corpus_num
+    print "unigram:\t",cws.unigram_feat_num
+    print "bigram:\t",cws.bigram_feat_num
+    print "dict:\t",cws.dict_feat_num
+    print "type:\t",cws.type_feat_num
+    print "feat dimensions:\t", cws.dimension
+    print "initial prb:"
     for i in cws.init_prb:
         print i, cws.init_prb[i]
-    print u"转移概率："
+    print "trans prb:"
     for i in cws.trans_prb: 
         print i, cws.trans_prb[i]
     
     
-#    count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\dictdata',-1)
-#    print 'generate',count,'training data file.'
-#    cws.saveModel()
-#    cws.train(r'.\\FDU_NLPCC2015_Final\\training\\dictdata',count,5000,500,1,0.1,False)        
+    count = cws.makeLibSvmData(r'./FDU_NLPCC2015_Final/training/dt_data',-1)
+    print 'generate',count,'training data file.'
+    cws.saveModel()
+    cws.train(r'./FDU_NLPCC2015_Final/training/dt_data',count,500,1,0.1,False)        
 #    cws.loadModel()
-    cws.loadCorpus(r'.\\FDU_NLPCC2015_Final\\test\\test-Gold-SEG.utf8')
-    cws.perceptron.loadFeatSize(cws.dimension,4)
-    cws.perceptron.loadLabelSet()
-    cws.perceptron.loadWeights()
-    cws.segmentation(r"FDU_seg.utf8")
-    del cws
+#    cws.loadCorpus(r'.\\testing\\pku_test.utf8')
+#    cws.perceptron.loadFeatSize(cws.dimension,4)
+#    cws.perceptron.loadLabelSet()
+#    cws.perceptron.loadWeights()
+#    cws.segmentation(r"pku_seg.utf8")
+#    del cws
