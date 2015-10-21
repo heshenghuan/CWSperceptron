@@ -19,7 +19,7 @@
 * CWSPv5.py<br>
   CWSperceptron with 10+punc+dict+type features.
 
-#####note: 
+#####notes: 
 10: 10 base features + punctution information feature<br>
 punc: punctutaion information feature<br>
 dict: dictionary information features<br>
