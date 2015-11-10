@@ -26,6 +26,7 @@ class MultiPerceptron(object):
         self.feat_size = 0
         self.sample_list = list()
         self.label_list = list()
+        self.path = r"./"
 
     def sigmoid(self,x):
         return 1/(1+math.exp(-x/5000))
@@ -35,12 +36,15 @@ class MultiPerceptron(object):
         print "label size:", len(self.label_list)
         print "label set size:", len(self.label_set_list)
         print "feat size:", self.feat_size
+
+    def setSavePath(self,path):
+        self.path = path
         
     def saveModel(self):
-        output1 = open(r"label_set_list.pkl",'wb')
+        output1 = open(self.path+r"label_set_list.pkl",'wb')
         dump(self.label_set_list, output1, -1)
         output1.close()
-        output2 = open(r"weights.pkl",'wb')
+        output2 = open(self.path+r"weights.pkl",'wb')
         dump(self.weights, output2, -1)
         output2.close()
         #release the memory
@@ -51,12 +55,12 @@ class MultiPerceptron(object):
         self.label_list = list()
         
     def loadLabelSet(self):
-        inputs = open(r"label_set_list.pkl",'rb')
+        inputs = open(self.path+r"label_set_list.pkl",'rb')
         self.label_set_list = load(inputs)
         inputs.close()
         
     def loadWeights(self):
-        inputs = open(r"weights.pkl",'rb')
+        inputs = open(self.path+r"weights.pkl",'rb')
         self.weights = load(inputs)
         inputs.close()
         
