@@ -30,13 +30,18 @@ class CWSPerceptron:
         self.unigram_feat_id = {}
         self.bigram_feat_num = 0
         self.bigram_feat_id = {}
+        self.path = r'./'
     
+    def setSavePath(self,path):
+        self.path = path
+        self.perceptron.setSavePath(path)
+
     def saveModel(self):
         print "Saving the unigram&bigram infomation......"
-        output1 = open(r"bigram_feat_id.pkl",'wb')
+        output1 = open(self.path+r"bigram_feat_id.pkl",'wb')
         dump(self.bigram_feat_id, output1, -1)
         output1.close()
-        output2 = open(r"unigram_feat_id.pkl",'wb')
+        output2 = open(self.path+r"unigram_feat_id.pkl",'wb')
         dump(self.unigram_feat_id, output2, -1)
         output2.close()
         
@@ -46,30 +51,30 @@ class CWSPerceptron:
         self.corpus = []
         self.tag = []
         print "Saving the inital prb & trans prb infomation....."
-        output1 = open(r"init_prb.pkl",'wb')
+        output1 = open(self.path+r"init_prb.pkl",'wb')
         dump(self.init_prb, output1, -1)
         output1.close()
-        output2 = open(r"trans_prb.pkl",'wb')
+        output2 = open(self.path+r"trans_prb.pkl",'wb')
         dump(self.trans_prb, output2, -1)
         output2.close()
         print "Saving process done."
         
     def loadModel(self):
         print "Loading the unigram&bigram infomation......"
-        inputs = open(r"bigram_feat_id.pkl",'rb')
+        inputs = open(self.path+r"bigram_feat_id.pkl",'rb')
         self.bigram_feat_id = load(inputs)
         self.bigram_feat_num = len(self.bigram_feat_id)
         inputs.close()
-        inputs1 = open(r"unigram_feat_id.pkl",'rb')
+        inputs1 = open(self.path+r"unigram_feat_id.pkl",'rb')
         self.unigram_feat_id = load(inputs1)
         self.unigram_feat_num = len(self.unigram_feat_id)
         inputs1.close()
         #print "Loading process done."
         print "Loading the prb infomation......"
-        inputs = open(r"init_prb.pkl",'rb')
+        inputs = open(self.path+r"init_prb.pkl",'rb')
         self.init_prb = load(inputs)
         inputs.close()
-        inputs1 = open(r"trans_prb.pkl",'rb')
+        inputs1 = open(self.path+r"trans_prb.pkl",'rb')
         self.trans_prb = load(inputs1)
         inputs1.close()
         print "Loading process done."
@@ -210,6 +215,7 @@ class CWSPerceptron:
             for s in self.state:
                 prb = float('-inf')
                 prb_max = float('-inf')
+                state_max = 'S'
                 for i in self.state:
                     #prb = toward[t-1][i] * self.trans_prb[i][s] * emit_prb[s]
                     if self.trans_prb[i][s] != 0. and emit_prb[s]!=0.:
@@ -274,8 +280,8 @@ class CWSPerceptron:
         featVecs = []
         for feat in feats:
             featVec = {}
-            if feat[2] in punctuation:
-                featVec[0] = 1
+            # if feat[2] in punctuation:
+            #     featVec[0] = 1
             for it in range(len(feat)):
                 if it < 5:
                     if self.unigram_feat_id.has_key(feat[it]):
@@ -400,31 +406,4 @@ class CWSPerceptron:
                 self.trans_prb[x][y] = float(self.trans_prb[x][y])/tmpsum
         self.dimension = self.unigram_feat_num*5 + self.bigram_feat_num*5
         print "\nProcess of pretreatment finished."
-                
-if __name__ == '__main__':
-    cws = CWSPerceptron()
-    #cws.pretreatment(r'.\\FDU_NLPCC2015_Final\\train\\train-SEG.utf8')
-    
-    cws.loadModel()
-    print u"语料数量：\t", cws.corpus_num
-    print u"unigram特征数量：\t",cws.unigram_feat_num
-    print u"bigram特征数量：\t",cws.bigram_feat_num
-    print u"特征空间维度： \t", cws.dimension
-    print u"初始概率："
-    for i in cws.init_prb:
-        print i, cws.init_prb[i]
-    print u"转移概率："
-    for i in cws.trans_prb: 
-        print i, cws.trans_prb[i]
-    
-    #count = cws.makeLibSvmData(r'.\\FDU_NLPCC2015_Final\\training\\data',-1)
-    #print 'generate',count,'training data file.'
-    #cws.saveModel()
-    #cws.train(r'.\\FDU_NLPCC2015_Final\\training\\data',count,5000,500,1,0.1,False)        
-    #cws.loadModel()
-    cws.loadCorpus(r'.\\FDU_NLPCC2015_Final\\test\\test-Gold-SEG.utf8')
-    cws.perceptron.loadFeatSize(cws.dimension,4)
-    cws.perceptron.loadLabelSet()
-    cws.perceptron.loadWeights()
-    cws.segmentation(r"FDU_seg.utf8")
-    del cws
+
