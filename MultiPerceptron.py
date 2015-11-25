@@ -429,9 +429,10 @@ class MultiPerceptron(object):
         print "stop time:\t", stop_clock
 
     def scoreout(self, sample_test):
-        X = self.__getSampleVec(sample_test)
+        # X = self.__getSampleVec(sample_test)
         C = self.class_num
-        pred = self.predict(X)
+        # pred = self.predict(X)
+        pred = self.predict2(sample_test)
         score = {}
         for l in range(C):
             label = self.label_set[l]
@@ -446,8 +447,9 @@ class MultiPerceptron(object):
         return prb
 
     def classify(self, sample_test):
-        X = self.__getSampleVec(sample_test)
-        result = self.predict(X)
+        # X = self.__getSampleVec(sample_test)
+        # result = self.predict(X)
+        result = self.predict2(sample_test)
         pred_id = result.index(max(result))
         pred = self.label_set[pred_id]
         return pred
