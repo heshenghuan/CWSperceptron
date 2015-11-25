@@ -1,444 +1,466 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 20 15:49:02 2015
+Created on 13:47:27 2015-3-15
 
-@author: heshenghuan
+@author: heshenghuan (heshenghuan@sina.com)
+http://github.com/heshenghuan
 """
 
 import math
 import random
-import copy
 import codecs
 import datetime
+import time
+import numpy as np
 from cPickle import dump
 from cPickle import load
 
+
+CHANGED = "Updated on 13:18 2015-11-25"
+
+
 def calc_acc(labellist1, labellist2):
-    samelist =[int(x == y) for (x, y) in zip(labellist1, labellist2)]
-    accuracy = float((samelist.count(1)))/len(samelist)
+    samelist = [int(x == y) for (x, y) in zip(labellist1, labellist2)]
+    accuracy = float((samelist.count(1))) / len(samelist)
     return accuracy
 
+
 class MultiPerceptron(object):
+    """
+    MultiPerceptron, a python implementation of multiclass perceptron
+    algorithm.
+
+    Using numpy.array to store matrixes.
+    """
+
     def __init__(self):
-        self.label_set_list = list()
-        self.weights = list()
-        #self.best_weights = list()
+        """
+        Initialization function, returns an instance of MultiPerceptron with
+        all the field empty.
+        """
+        self.label_set = []
+        self.sample_list = []
+        self.label_list = []
+        self.Theta = None
         self.feat_size = 0
-        self.sample_list = list()
-        self.label_list = list()
-        self.path = r"./"
+        self.class_num = 0
+        self.path = r"./"  # the path used to store Theta matrix
 
-    def sigmoid(self,x):
-        return 1/(1+math.exp(-x/5000))
-    
+    def sigmoid(self, x):
+        return 1 / (1 + math.exp(-x / 5000))
+
     def printinfo(self):
-        print "sample size:", len(self.sample_list)
-        print "label size:", len(self.label_list)
-        print "label set size:", len(self.label_set_list)
-        print "feat size:", self.feat_size
+        print "sample size:      ", len(self.sample_list)
+        print "label size:       ", len(self.label_list)
+        print "label set size:   ", len(self.label_set)
+        print "feature dimension:", self.feat_size
 
-    def setSavePath(self,path):
+    def setSavePath(self, path):
+        """
+        Set the model save path.
+        """
         self.path = path
-        
-    def saveModel(self):
-        output1 = open(self.path+r"label_set_list.pkl",'wb')
-        dump(self.label_set_list, output1, -1)
+
+    def saveModel(self, path=r'./'):
+        """
+        Stores the model under given folder path.
+        """
+        if path == r"./":
+            print "Using current directory(./) to save model."
+        else:
+            print "Storing model file under folder:", self.path, '.'
+
+        output1 = open(self.path + r"label_set.pkl", 'wb')
+        dump(self.label_set, output1, -1)
         output1.close()
-        output2 = open(self.path+r"weights.pkl",'wb')
-        dump(self.weights, output2, -1)
+        output2 = open(self.path + r"Theta.pkl", 'wb')
+        dump(self.Theta, output2, -1)
         output2.close()
-        #release the memory
-        self.label_set_list = list()
-        self.weights = list()
-        self.best_weights = list()
+        # release the memory
+        self.label_set = list()
+        self.Theta = None
         self.sample_list = list()
         self.label_list = list()
-        
-    def loadLabelSet(self):
-        inputs = open(self.path+r"label_set_list.pkl",'rb')
-        self.label_set_list = load(inputs)
-        inputs.close()
-        
-    def loadWeights(self):
-        inputs = open(self.path+r"weights.pkl",'rb')
-        self.weights = load(inputs)
-        inputs.close()
-        
+
+    def loadLabelSet(self, label_set=None):
+        """
+        Loads label_set from file under given file path.
+
+        If file does not exist, reports an IOError then returns False.
+
+        If loads successed, returns True
+        """
+        if not label_set:
+            print "Not given any file path, load label_set from default path."
+            print "Please make sure corresponding file exist!"
+            label_set = self.path + r"./label_set.pkl"
+
+        try:
+            inputs = open(label_set, 'rb')
+            self.label_set = load(inputs)
+            self.class_num = len(self.label_set)
+            return True
+        except IOError:
+            print "Corresponding file \"label_set.pkl\" doesn\'t exist!"
+            return False
+
+    def loadTheta(self, Theta=None):
+        """
+        Loads Theta from file under given file path.
+
+        If file does not exist, reports an IOError then returns False.
+
+        If loads successed, returns True
+        """
+        if not Theta:
+            print "Not given any file path, load Theta from default path."
+            print "Please make sure corresponding file exist!"
+            theta = self.path + r"./Theta.pkl"
+
+        try:
+            inputs = open(theta, 'rb')
+            self.Theta = load(inputs)
+            return True
+        except IOError:
+            print "Error:File does"
+            print "Corresponding file \"Theta.pkl\" doesn\'t exist!"
+            return False
+
     def loadFeatSize(self, size, classNum):
+        """
+        A combination of function setFeatSize, setClassNum and initTheta.
+        In order to be compatible with old API of MultiPerceptron of mine.
+
+        It has same result with the following sentences:
+            >>> x.setFeatSize(feat_size)
+            >>> x.setClassNum(classNum)
+            >>> x.initTheta()
+        """
+        self.setFeatSize(size)
+        self.setClassNum(classNum)
+        flag = self.initTheta()
+        return flag
+
+    def setFeatSize(self, size=0):
+        """
+        Sets feature dimensions by the given size.
+        """
+        if size == 0:
+            print "Warning: ZERO dimensions of feature will be set!"
+            print "         This would causes some trouble unpredictable!"
+            print "         Please make sure the dimension of feature is 0!"
         self.feat_size = size
-        omega = []
-        for i in xrange(classNum):
-            omega.append(copy.deepcopy([0.]*(size+1)))
-        self.weights = omega
-    
-    def printweights(self):
-        for item in self.weights:
-            print item
-    
-    def train_mini_batch(self, batch_num = 10, max_iter = 100, learn_rate = 0.01, delta_thrd = 0.00001, is_average = True):
-        print '-'*60
+
+    def setClassNum(self, classNum=0):
+        """
+        Sets number of label classies by given classNum.
+        """
+        if classNum == 0:
+            print "Warning: ZERO class of samples will be set!"
+            print "         This would causes some trouble unpredictable!"
+            print "         Please make sure the number of classies is 0!"
+        self.class_num = classNum
+
+    def initTheta(self):
+        """
+        Initializes the Theta matrix.
+
+        If the dimension of feature and number of classies are not be set, or
+        are 0, this function will not Initializes Theta.
+
+        Initialization successed, returns True. If not, returns False.
+        """
+        if self.feat_size != 0 and self.class_num != 0:
+            self.Theta = np.zeros((self.class_num, self.feat_size + 1))
+            return True
+        else:
+            print "Error: The dimension of feature and number of classies can"
+            print "       not be ZERO!"
+            return False
+
+    def __getSampleVec(self, sample):
+        """
+        Returns a row vector by 1*(n+1).
+        """
+        sample_vec = np.zeros((1, self.feat_size + 1))
+        sample_vec[0, 0] = 1.0
+        for i in sample.keys():
+            sample_vec[0][i] = sample[i]
+
+        return sample_vec
+
+    def predict(self, sample):
+        """
+        Returns the predict vector.
+        """
+        X = sample.T
+        pred = []
+        for j in range(self.class_num):
+            pred.append(np.dot(self.Theta[j, :], X)[0])
+        # return normalize(pred)
+        return pred
+
+    def predict2(self, sample):
+        """
+        Returns the predict vector, this function uses the raw sample to
+        calculate while the predict<function> uses vector to represent the
+        sample.
+        """
+        pred = []
+        C = self.class_num
+        for i in range(C):
+            score = sum(self.Theta[i, key]*val for key, val in sample.items())
+            pred.append(score)
+
+        return pred
+
+    def __getCost(self):
+        """
+        Returns the cost function value by using current Theta.
+        """
+        N = len(self.sample_list)    # number of sample
+
+        error_count = 0
+        loss = 0.
+        for j in range(N):
+            sample = self.sample_list[j]
+            # result = self.predict(self.__getSampleVec(sample))
+            result = self.predict2(sample)
+            pred_id = result.index(max(result))
+            pred = self.label_set[pred_id]
+            label = self.label_list[j]
+            label_id = self.label_set.index(label)
+            if label != pred:
+                error_count += 1
+                loss += (result[pred_id] - result[label_id])
+
+        loss /= N
+        return (error_count, loss)
+
+    def train_mini_batch(self, batch_num=100, max_iter=100, learn_rate=0.01,
+                         delta_thrd=0.01, is_average=True):
+        print '-' * 60
         print "START TRAIN MINI BATCH:"
         N = len(self.sample_list)    # number of sample
-        M = self.feat_size+1 # number of feature
-        C = len(self.label_set_list)
-        
+        M = self.feat_size + 1  # number of feature
+
         if batch_num > N:
             batch_num = N
         sample_list = self.sample_list
-        #weights of each class
-        omega = self.weights  #just use the weights, the old weights is saved on disk
-        omega_sum  = []
-        if is_average:
-            for i in xrange(C):
-                omega_sum.append(copy.deepcopy([0.]*M))
-        rd = 0
-        loss = 0.
+        # Theta of each class
+        # just use the Theta, the old Theta is saved on disk
+        omega = self.Theta
+        omega_sum = np.zeros(omega.shape)
+        rd = 1
+        last = 0
+        flag = 0
         start_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print start_clock
-        delta = []
-        for i in xrange(C):
-            delta.append(copy.deepcopy([0.]*M))
-        while rd < max_iter:
-            #update omega
-            for i in xrange(C):
-                for j in xrange(M):
-                    delta[i][j] = 0.
-            time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        while rd <= max_iter:
+            delta = np.zeros(omega.shape)
+            # time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             batch_list = []
-            while(len(batch_list)<batch_num):
-                index = random.randint(0,N-1)
+            while(len(batch_list) < batch_num):
+                index = random.randint(0, N - 1)
                 if index not in batch_list:
                     batch_list.append(index)
+
             for i in batch_list:
-                sample = sample_list[i]
-                result = [0.]*C
-                for index in range(C):
-                    result[index] = sum(omega[index][j]*sample[j] for j in sample.keys())
-                max_label_id = result.index(max(result))                  
-                max_label = self.label_set_list[max_label_id]
-                real_label = self.label_list[i]
-                real_label_id = self.label_set_list.index(real_label)
-                if real_label != max_label:
-                    for index in sample.keys():
-                        delta[real_label_id][index] +=  learn_rate * sample[index]
-                        delta[max_label_id][index] -=   learn_rate * sample[index]
+                result = self.predict2(sample_list[i])
+                pred_id = result.index(max(result))
+                pred = self.label_set[pred_id]
+                label = self.label_list[i]
+                label_id = self.label_set.index(label)
+                if label != pred:
+                    for key, val in sample_list[i].items():
+                        delta[label_id, key] += learn_rate * val
+                        delta[pred_id, key] -= learn_rate * val
+
             # weight update
-            for l in range(C):
-                for j in range(M):
-                    omega[l][j] += delta[l][j]
-                    if is_average:
-                        omega_sum[l][j] += omega[l][j]
-            
-            error_count = 0
-            loss = 0.
-            for j in range(N):
-                sample1 = sample_list[j]
-                result = [0.]*C
-                for index in range(C):
-                    result[index] = sum(omega[index][p]*sample1[p] for p in sample1.keys())
-                max_label_id1 = result.index(max(result))                  
-                max_label1 = self.label_set_list[max_label_id1]
-                real_label1 = self.label_list[j]
-                real_label_id1 = self.label_set_list.index(real_label1)
-                if real_label1 != max_label1:
-                    error_count += 1
-                    loss += (result[max_label_id1] - result[real_label_id1])
-            acc = 1-error_count/float(N)
-            loss /= N
-            time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print '\nIter:', rd, '\tCost:', '%.8f' % loss, '\tAcc:', '%.4f' % acc,"\tError: %4d" %error_count
-            print 'start:\t',time1
-            print "stop:\t",time2
-            
-            if loss < delta_thrd or acc>0.99:
-                print "Reach the minimal loss value threshold!"
-                break
-            rd+=1
+            omega += delta
+            omega_sum += omega
+
+            # Get error & cost function value
+            error_count, loss = self.__getCost()
+            acc = 1 - error_count / float(N)
+            # loss /= N
+            # time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print 'Iter:', rd, '\tCost:', '%.8f' % loss,
+            print '\tAcc:', '%.4f' % acc, "\tError: %4d" % error_count
+            # print 'start:\t', time1
+            # print "stop:\t", time2
+
+            if rd > 1:
+                if last - loss < delta_thrd and last >= loss:
+                    print "Reach the minimal loss value threshold!"
+                    break
+            rd += 1
+            last = loss
 
         if is_average:
-            self.weights = [[omega_sum[l][j]/(rd) for j in range(M)] for l in range(C)]
+            self.Theta = omega_sum/(rd*batch_num)
         else:
-            self.weights = omega
+            self.Theta = omega
         stop_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print "\nTraining process finished."
-        print "start time:\t",start_clock
-        print "stop time:\t",stop_clock
-    
-    def train_sgd(self, max_iter = 100, learn_rate = 1.0, delta_thrd = 0.00001, is_average = True):
-        print '-'*60
-        print "START TRAIN SGD:"
-        N = len(self.sample_list)    # number of sample
-        M = self.feat_size+1 # number of feature
-        C = len(self.label_set_list)
-        
-        # convert to extend sample set
-        sample_list_ext = self.sample_list
-        #weights of each class
-        omega = []
-        for i in xrange(C):
-            omega.append(copy.deepcopy([float(1)/N]*M))
+        print "start time:\t", start_clock
+        print "stop time:\t", stop_clock
 
-        omega_sum  = copy.deepcopy(omega)
-        rd = 0
-        loss = 0.
-        start_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print start_clock
-        while rd < max_iter*N:
-            #update omega
-            delta = []
-            for i in xrange(C):
-                delta.append(copy.deepcopy([0.]*M))
-            time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            i = random.randint(0,N-1)
-            sample = sample_list_ext[i]
-            result = [0.]*C
-            for index in range(C):
-                result[index] = sum(omega[index][j]*sample[j] for j in sample.keys())
-            max_label_id = result.index(max(result))                  
-            max_label = self.label_set_list[max_label_id]
-            real_label = self.label_list[i]
-            real_label_id = self.label_set_list.index(real_label)
-            # weight update
-            if real_label != max_label:
-                for index in sample.keys():
-                    omega[real_label_id][index] +=  learn_rate * sample[index]
-                    omega[max_label_id][index] -=   learn_rate * sample[index]
-            
-            error_count = 0
-            loss = 0.
-            for j in range(N):
-                sample1 = sample_list_ext[j]
-                result = [0.]*C
-                for index in range(C):
-                    result[index] = sum(omega[index][p]*sample1[p] for p in sample1.keys())
-                max_label_id1 = result.index(max(result))                  
-                max_label1 = self.label_set_list[max_label_id1]
-                real_label1 = self.label_list[j]
-                real_label_id1 = self.label_set_list.index(real_label1)
-                if real_label1 != max_label1:
-                    error_count += 1
-                    loss += (result[max_label_id1] - result[real_label_id1])
-            acc = 1-error_count/float(N)
-            loss /= N
-            time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print '\nIter:', rd, '\tCost:', '%.8f' % loss, '\tAcc:', '%.4f' % acc,"\tError: %4d" %error_count
-            print 'start:\t',time1
-            print "stop:\t",time2
-            
-            if loss < delta_thrd :
-                print "Reach the minimal loss value threshold!"
-                break
-            rd+=1
-            if is_average:
-                for l in range(C):
-                    for j in range(M):
-                        omega_sum[l][j] += omega[l][j]
-
-        if is_average:
-            self.weights = [[omega_sum[l][j]/(rd) for j in range(M)] for l in range(C)]
-        else:
-            self.weights = omega
-        stop_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print "\nTraining process finished."
-        print "start time:\t",start_clock
-        print "stop time:\t",stop_clock    
-    
-    def train_batch(self, max_iter = 100, delta_thrd = 0.00001, is_average = True):
-        print '-'*60
+    def train_batch(self, max_iter=100, learn_rate=0.01, delta_thrd=0.01,
+                    is_average=True):
+        print '-' * 60
         print "START TRAIN BATCH:"
         N = len(self.sample_list)    # number of sample
-        M = self.feat_size+1 # number of feature
-        C = len(self.label_set_list)
-        
-        # convert to extend sample set
-        sample_list_ext = self.sample_list
-        #weights of each class
-        omega = []
-        for i in xrange(C):
-            omega.append(copy.deepcopy([0.]*M))
-#            for j in xrange(M):
-#                self.weights[i].append(0.)
-        omega_sum  = copy.deepcopy(omega)
-        learn_rate = 1
-        rd = 0
-        best_acc = 0.
-        best_omega = []
-        while rd < max_iter:
-            error_count = 0
-            delta = []
-            for i in xrange(C):
-                delta.append(copy.deepcopy([0.]*M))
-            for i in xrange(N):
-                sample = sample_list_ext[i]
-                #print "sample size:", max(sample.keys())
-                result = [0.]*C
-                for index in xrange(C):
-                    result[index] = sum(omega[index][j]*sample[j] for j in sample.keys())
-                max_label_id = result.index(max(result))                  
-                max_label = self.label_set_list[max_label_id]
-                real_label = self.label_list[i]
-                real_label_id = self.label_set_list.index(real_label)
-                if real_label != max_label:
-                    error_count += 1
-                    for index in sample.keys():
-#                        delta[real_label_id][index] = omega[real_label_id][index] + learn_rate * value
-#                        delta[max_label_id][index] = omega[max_label_id][index] - learn_rate * value
-                        delta[real_label_id][index] +=  learn_rate * sample[index]
-                        delta[max_label_id][index] -=   learn_rate * sample[index]
-            acc = 1-float(error_count)/N
-            print 'Iter:', rd+1, '\tAcc: %.4f' %acc,"\tError: %4d" %error_count
-            if acc > best_acc:
-                best_acc = acc
-                best_omega = copy.deepcopy(omega)
-            # weight update
-            for l in range(C):
-                for j in range(M):
-                    omega[l][j] += delta[l][j]
-                    omega_sum[l][j] += omega[l][j]
-            rd+=1
-#            if acc >= 0.9900:
-#                break
+        M = self.feat_size + 1  # number of feature
 
-        if is_average:
-            self.weights = [[omega_sum[l][j]/(rd*N) for j in range(M)] for l in range(C)]
-        else:
-            #self.weights = omega
-            self.weights = best_omega
-        print "Best Accuract: %.4f" %best_acc
-        #self.best_weights = best_omega
-
-    def train_random(self, max_iter = 100, learn_rate = 1, delta_thrd = 0.00001, is_average = True):
-        print '-'*60
-        print "START TRAIN SGD:"
-        N = len(self.sample_list)    # number of sample
-        M = self.feat_size+1 # number of feature
-        C = len(self.label_set_list)
-        
-        # convert to extend sample set
-        sample_list_ext = copy.deepcopy(self.sample_list)
-        for i in range(N):
-            sample_list_ext[i][0]=1    #add bias
-        #weights of each class
-        omega = []
-        for i in xrange(C):
-            omega.append(copy.deepcopy([float(1)/N]*M))
-
-        omega_sum  = copy.deepcopy(omega)
-        rd = 0
-        loss = 0.
-        loss_pre = 0.
-        #best_acc = 0.
+        sample_list = self.sample_list
+        omega = self.Theta
+        omega_sum = np.zeros(omega.shape)
+        rd = 1
+        last = 0
+        flag = 0
         start_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print start_clock
-        while rd < max_iter*N:
-            #if rd%1000 == 0:
-                #print rd,
-            if rd%N == 0:
-                loop = rd/N
-                error_count = 0
-                loss = 0.
-                for j in range(N):
-                    sample = sample_list_ext[j]
-                    result = [0.]*C
-                    for index in range(C):
-                        result[index] = sum(omega[index][p]*sample[p] for p in sample.keys())
-                    max_label_id = result.index(max(result))                  
-                    max_label = self.label_set_list[max_label_id]
-                    real_label = self.label_list[j]
-                    real_label_id = self.label_set_list.index(real_label)
-                    if real_label != max_label:
-                        error_count += 1
-                        loss += (result[max_label_id] - result[real_label_id])
-                acc = 1-error_count/float(N)
-                loss /= N
-                time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                print '\nIter:', loop, '\tCost:', '%.8f' % loss, '\tAcc:', '%.4f' % acc,"\tError: %4d" %error_count
-                print 'start:\t',
-                if rd!=0:
-                    print time1
-                else:
-                    print start_clock
-                print "stop:\t",time2
-                if rd!=0 and loss_pre - loss < delta_thrd and loss_pre >= loss:
-                    print "Reach the minimal loss value decrease!"
-                    break
-                loss_pre = loss
-                time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#                if acc > best_acc:
-#                    best_acc = acc
-#                    self.best_weights = copy.deepcopy(omega)
-            
-            #update omega
-            i = random.randint(0,N-1)
-            sample = sample_list_ext[i]
-            result = [0.]*C
-            for index in range(C):
-                result[index] = sum(omega[index][j]*sample[j] for j in sample.keys())
-            max_label_id = result.index(max(result))                  
-            max_label = self.label_set_list[max_label_id]
-            real_label = self.label_list[i]
-            real_label_id = self.label_set_list.index(real_label)
+        while rd <= max_iter:
+            error_count = 0
+            loss = 0.
+            delta = np.zeros(omega.shape)
+            # time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for i in xrange(N):
+                result = self.predict2(sample_list[i])
+                pred_id = result.index(max(result))
+                pred = self.label_set[pred_id]
+                label = self.label_list[i]
+                label_id = self.label_set.index(label)
+                if label != pred:
+                    error_count += 1
+                    loss += (result[pred_id] - result[label_id])
+                    for key, val in sample_list[i].items():
+                        delta[label_id, key] += learn_rate * val
+                        delta[pred_id, key] -= learn_rate * val
+
+            acc = 1 - float(error_count) / N
+            loss /= error_count if error_count != 0 else 1
+            # time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print 'Iter:', rd, '\tCost:', '%.8f' % loss,
+            print '\tAcc:', '%.4f' % acc, "\tError: %4d" % error_count
+            # print 'start:\t', time1
+            # print "stop:\t", time2
+
             # weight update
-            if real_label != max_label:
-                for index in sample.keys():
-                    omega[real_label_id][index] +=  learn_rate * sample[index]
-                    omega[max_label_id][index] -=   learn_rate * sample[index]
-            #sum for average
-            for l in range(C):
-                for j in range(M):
-                    omega_sum[l][j] += omega[l][j]
-            rd+=1
+            omega += delta
+            omega_sum += omega
+            if rd > 1:
+                if last - loss < delta_thrd and last >= loss:
+                    print "Reach the minimal loss value threshold!"
+                    break
+            rd += 1
+            last = loss
 
         if is_average:
-            self.weights = [[omega_sum[l][j]/(rd) for j in range(M)] for l in range(C)]
+            self.Theta = omega_sum/(rd*N)
         else:
-            if rd >= max_iter*N:
-                self.weights = self.best_weights
-            else:
-                self.weights = omega
+            # self.Theta = omega
+            self.Theta = omega
         stop_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print "start time:\t",start_clock
-        print "stop time:\t",stop_clock
+        print "\nTraining process finished."
+        print "start time:\t", start_clock
+        print "stop time:\t", stop_clock
 
-    def scoreout(self,sample_test):
-        sample_test_ext = sample_test
-        C = len(self.weights)
+    def train_sgd(self, max_iter=100, learn_rate=1.0, delta_thrd=0.1,
+                  is_average=True):
+        print '-' * 60
+        print "START TRAIN SGD:"
+        N = len(self.sample_list)    # number of sample
+        M = self.feat_size + 1  # number of feature
+
+        # convert to extend sample set
+        sample_list = self.sample_list
+        # Theta of each class
+        omega = self.Theta
+        omega_sum = np.zeros(omega.shape)
+        rd = 1
+        last = 0.
+        flag = 0
+        start_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print start_clock
+        # time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        while rd < max_iter * N:
+            if rd % N == 0 and rd != 0:
+                loop = rd/N
+                error_count, loss = self.__getCost()
+                acc = 1 - error_count / float(N)
+                # time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                print 'Iter:', loop, '\tCost:', '%.8f' % loss,
+                print '\tAcc:', '%.4f' % acc, "\tError: %4d" % error_count
+                # print 'start:\t', time1
+                # print "stop:\t", time2
+                if loop > 1:
+                    if last - loss < delta_thrd and last >= loss:
+                        print "Reach the minimal loss value threshold!"
+                        break
+                last = loss
+                # time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Choose a random sample
+            i = random.randint(0, N - 1)
+            result = self.predict2(sample_list[i])
+            pred_id = result.index(max(result))
+            pred = self.label_set[pred_id]
+            label = self.label_list[i]
+            label_id = self.label_set.index(label)
+            # weight update
+            if label != pred:
+                for key, val in sample_list[i].items():
+                    omega[label_id, key] += learn_rate * val
+                    omega[pred_id, key] -= learn_rate * val
+            rd += 1
+            if is_average:
+                omega_sum += omega
+
+        if is_average:
+            self.Theta = omega_sum/(rd)
+        else:
+            self.Theta = omega
+        stop_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print "\nTraining process finished."
+        print "start time:\t", start_clock
+        print "stop time:\t", stop_clock
+
+    def scoreout(self, sample_test):
+        X = self.__getSampleVec(sample_test)
+        C = self.class_num
+        pred = self.predict(X)
         score = {}
         for l in range(C):
-            label = self.label_set_list[l]
-            score[label] = sum(self.weights[l][j]*sample_test_ext[j] for j in sample_test_ext.keys())
+            label = self.label_set[l]
+            score[label] = pred[l]
         return score
-    
+
     def probout(self, sample_test):
-        sample_test_ext = sample_test
-        C = len(self.weights)
-        score = {}
+        score = self.scoreout(sample_test)
         prb = {}
-        for l in range(C):
-            label = self.label_set_list[l]
-            score[label] = sum(self.weights[l][j]*sample_test_ext[j] for j in sample_test_ext.keys())
-            prb[label] = self.sigmoid(score[label])
+        for key in score.keys():
+            prb[key] = self.sigmoid(score[key])
         return prb
 
     def classify(self, sample_test):
-        sample_test_ext = sample_test
-        C = len(self.weights)
-        weighted_sum = [0.]*C
-        for l in range(C):
-            weighted_sum[l] = sum(self.weights[l][j]*sample_test_ext[j] for j in sample_test_ext.keys())
-        max_label_id = weighted_sum.index(max(weighted_sum))
-        max_label = self.label_set_list[max_label_id]
-        return max_label
-    
+        X = self.__getSampleVec(sample_test)
+        result = self.predict(X)
+        pred_id = result.index(max(result))
+        pred = self.label_set[pred_id]
+        return pred
+
     def batch_classify(self, sample_list_test):
         label_list_test = []
         for sample_test in sample_list_test:
             label_list_test.append(self.classify(sample_test))
         return label_list_test
-    
+
     def read_train_file(self, filepath):
         """
-        make traing set from file 
+        make traing set from file
         return sample_set, label_set
         """
         data = codecs.open(filepath, 'r')
@@ -452,4 +474,4 @@ class MultiPerceptron(object):
                 [index, value] = val[i].split(':')
                 sample_vec[int(index)] = float(value)
             self.sample_list.append(sample_vec)
-        self.label_set_list = list(set(self.label_list))
+        self.label_set = list(set(self.label_list))
