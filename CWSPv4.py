@@ -9,12 +9,13 @@ http://github.com/heshenghuan
 
 import codecs
 import math
+import time
 from MultiPerceptron import MultiPerceptron as MP
 from cPickle import dump
 from cPickle import load
 
 
-CHANGED = "Updated on 13:46 2015-11-25"
+CHANGED = "Updated on 14:55 2015-11-25"
 
 
 class CWSPerceptron:
@@ -105,6 +106,7 @@ class CWSPerceptron:
 
     def segmentation(self, outfile):
         output = codecs.open(outfile, 'w', 'utf-8')
+        start = time.clock()
         for i in range(self.corpus_num):
             taglist = self.ViterbiDecode(self.corpus[i])
             wordlist = self.tag2word(self.corpus[i], taglist)
@@ -112,25 +114,21 @@ class CWSPerceptron:
                 output.write(wordlist[j])
                 output.write(' ')
             output.write("\n")
+        print "Decode:", time.clock() - start
         output.close()
 
-    def train(self, trainfile, filenum, batch_num=100, max_iter=200,
-              learn_rate=0.01, delta_thrd=0.00001, is_average=True):
+    def train(self, trainfile, batch_num=100, max_iter=200, learn_rate=0.01,
+              delta_thrd=0.00001, is_average=True):
         # self.makelibsvmdata(r'train.data',max_corpus)
         print "Start training process."
         self.perceptron.loadFeatSize(self.dimension, len(self.state))
-        for i in range(1, filenum):
-            if i > 1:
-                self.perceptron.loadTheta()
-                self.perceptron.loadLabelSet()
-            print "reading training file", i
-            self.perceptron.read_train_file(trainfile + str(i))
-            self.perceptron.printinfo()
-            # self.perceptron.train_mini_batch(1000,500,0.01,10,False)
-            self.perceptron.train_mini_batch(
-                batch_num, max_iter, learn_rate, delta_thrd, is_average)
-            # self.perceptron.train_sgd(max_iter, learn_rate, delta_thrd, is_average)
-            self.perceptron.saveModel()
+        self.perceptron.read_train_file(trainfile)
+        self.perceptron.printinfo()
+        # self.perceptron.train_mini_batch(1000,500,0.01,10,False)
+        self.perceptron.train_mini_batch(batch_num, max_iter, learn_rate,
+                                         delta_thrd, is_average)
+        # self.perceptron.train_sgd(max_iter, learn_rate, delta_thrd, is_average)
+        self.perceptron.saveModel()
         print "Training process done."
         print "Multi-class Perceptron Model had been saved."
 
@@ -142,17 +140,15 @@ class CWSPerceptron:
     def makeLibSvmData(self, output_file, corpus_num=-1):
         print "Making training data.",
         filecount = 1
-        output_data = codecs.open(output_file + str(filecount), 'w')
+        output_data = codecs.open(output_file, 'w')
         if corpus_num == -1:
             corpus_num = self.corpus_num
-        s_count = 0
         for i in range(corpus_num):
             taglist = self.tag[i]
             features = self.GetFeature(self.corpus[i])
             vec = self.Feature2Vec(features)
             for j in range(len(taglist)):
                 output_data.write(taglist[j])
-                # output_data.write(str(self.state.index(taglist[j])))
                 output_data.write('\t')
                 keyset = list(vec[j].keys())
                 keyset = sorted(keyset)
@@ -162,15 +158,8 @@ class CWSPerceptron:
                     output_data.write(str(vec[j][key]))
                     output_data.write(' ')
                 output_data.write("\n")
-                s_count += 1
-                if s_count % 100000 == 0:
-                    filecount += 1
-                    output_data.close()
-                    output_data = codecs.open(
-                        output_file + str(filecount), 'w')
-                    print '.',
         output_data.close()
-        print "\nMaking training data finished.Totally", s_count, "samples."
+        print "\nMaking training data finished."
         return filecount
 
     def classifiy_score(self, featureVec):
