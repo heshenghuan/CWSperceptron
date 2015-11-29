@@ -17,9 +17,6 @@ from cPickle import dump
 from cPickle import load
 
 
-CHANGED = "Updated on 13:18 2015-11-25"
-
-
 def calc_acc(labellist1, labellist2):
     samelist = [int(x == y) for (x, y) in zip(labellist1, labellist2)]
     accuracy = float((samelist.count(1))) / len(samelist)
@@ -62,19 +59,20 @@ class MultiPerceptron(object):
         """
         self.path = path
 
-    def saveModel(self, path=r'./'):
+    def saveModel(self, path=None):
         """
         Stores the model under given folder path.
         """
-        if path == r"./":
+        if not path:
             print "Using current directory(./) to save model."
+            path = self.path
         else:
-            print "Storing model file under folder:", self.path, '.'
+            print "Storing model file under folder:", path, '.'
 
-        output1 = open(self.path + r"label_set.pkl", 'wb')
+        output1 = open(path + r"label_set.pkl", 'wb')
         dump(self.label_set, output1, -1)
         output1.close()
-        output2 = open(self.path + r"Theta.pkl", 'wb')
+        output2 = open(path + r"Theta.pkl", 'wb')
         dump(self.Theta, output2, -1)
         output2.close()
         # release the memory
@@ -82,6 +80,51 @@ class MultiPerceptron(object):
         self.Theta = None
         self.sample_list = list()
         self.label_list = list()
+
+    def saveTheta(self, path=None):
+        if not path:
+            print "Using current directory(./) to save model."
+            path = self.path + 'Theta.mdl'
+        else:
+            print "Saving model file under folder:%s." % path
+        output = codecs.open(path, 'w')
+        output.write("%d %d\n" % (self.class_num, self.feat_size + 1))
+        for i in range(self.feat_size+1):
+            for j in range(self.class_num):
+                output.write("%.2f " % self.Theta[j, i])
+            output.write('\n')
+        output.close()
+
+    def loadModel(self, path=None):
+        """
+        Loads model from universal format file.
+        """
+        if not path:
+            print "Using current directory(./) to load model."
+            path = self.path + 'Theta.mdl'
+        else:
+            print "Loading model file under folder:%s." % path
+
+        try:
+            inputs = codecs.open(path, 'r')
+            line_id = 0
+            self.label_set = ['0', '1', '2', '3']
+            for line in inputs.readlines():
+                raw = line.strip()
+                if raw == '':
+                    continue
+                raw = raw.split(' ')
+                if line_id == 0:
+                    self.loadFeatSize(int(raw[1]) - 1, int(raw[0]))
+                    line_id += 1
+                else:
+                    for i in range(len(raw)):
+                        self.Theta[i, line_id - 1] = float(raw[i])
+                    line_id += 1
+            return True
+        except IOError:
+            print "Corresponding file \"label_set.pkl\" doesn\'t exist!"
+            return False
 
     def loadLabelSet(self, label_set=None):
         """
@@ -94,7 +137,7 @@ class MultiPerceptron(object):
         if not label_set:
             print "Not given any file path, load label_set from default path."
             print "Please make sure corresponding file exist!"
-            label_set = self.path + r"./label_set.pkl"
+            label_set = self.path + r"label_set.pkl"
 
         try:
             inputs = open(label_set, 'rb')
@@ -116,7 +159,7 @@ class MultiPerceptron(object):
         if not Theta:
             print "Not given any file path, load Theta from default path."
             print "Please make sure corresponding file exist!"
-            theta = self.path + r"./Theta.pkl"
+            theta = self.path + r"Theta.pkl"
 
         try:
             inputs = open(theta, 'rb')
@@ -258,6 +301,7 @@ class MultiPerceptron(object):
         start_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print start_clock
         while rd <= max_iter:
+            # start = time.clock()
             delta = np.zeros(omega.shape)
             # time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             batch_list = []
@@ -276,10 +320,12 @@ class MultiPerceptron(object):
                     for key, val in sample_list[i].items():
                         delta[label_id, key] += learn_rate * val
                         delta[pred_id, key] -= learn_rate * val
+            # print "Calc update:%.3fs"%(time.clock() - start)
 
             # weight update
             omega += delta
-            omega_sum += omega
+            if is_average:
+                omega_sum += omega
 
             # Get error & cost function value
             error_count, loss = self.__getCost()
