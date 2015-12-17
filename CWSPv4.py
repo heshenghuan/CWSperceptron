@@ -11,11 +11,12 @@ import codecs
 import math
 import time
 from MultiPerceptron import MultiPerceptron as MP
+from Dict import Dict
 from cPickle import dump
 from cPickle import load
 
 
-CHANGED = "Updated on 14:55 2015-11-25"
+CHANGED = "Updated on 13:53 2015-12-17"
 
 
 class CWSPerceptron:
@@ -26,6 +27,7 @@ class CWSPerceptron:
         self.corpus_num = 0
         self.state = ['B', 'M', 'E', 'S']
         self.perceptron = MP()
+        self.dict = Dict()
         self.init_prb = {'B': 0, 'M': 0, 'E': 0, 'S': 0}
         self.trans_prb = {
             'B': {'B': 0, 'M': 0, 'E': 0, 'S': 0},
@@ -38,6 +40,8 @@ class CWSPerceptron:
         self.unigram_feat_id = {}
         self.bigram_feat_num = 0
         self.bigram_feat_id = {}
+        self.dict_feat_num = 0
+        self.dict_feat_id = {}
         self.path = r'./'
 
     def setSavePath(self, path):
@@ -52,6 +56,9 @@ class CWSPerceptron:
         output2 = open(self.path + r"unigram_feat_id.pkl", 'wb')
         dump(self.unigram_feat_id, output2, -1)
         output2.close()
+        output3 = open(self.path + r"dict_feat_id.pkl", 'wb')
+        dump(self.dict_feat_id, output3, -1)
+        output3.close()
 
         # release the memory
         self.unigram_feat_id = []
@@ -77,6 +84,9 @@ class CWSPerceptron:
         self.unigram_feat_id = load(inputs1)
         self.unigram_feat_num = len(self.unigram_feat_id)
         inputs1.close()
+        inputs2 = open(self.path + r"dict_feat_id.pkl", 'rb')
+        self.dict_feat_id = load(inputs2)
+        self.dict_feat_num = len(self.dict_feat_id)
         # print "Loading process done."
         print "Loading the prb infomation......"
         inputs = open(self.path + r"init_prb.pkl", 'rb')
@@ -86,7 +96,20 @@ class CWSPerceptron:
         self.trans_prb = load(inputs1)
         inputs1.close()
         print "Loading process done."
-        self.dimension = self.unigram_feat_num * 5 + self.bigram_feat_num * 5
+        self.dimension = self.unigram_feat_num * 5 + \
+            self.bigram_feat_num * 5 + self.dict_feat_num * 4
+
+    def loadDict(self, dictfile):
+        self.dict.loadDict(dictfile)
+
+    def saveDict(self, outfile):
+        self.dict.saveDict(outfile)
+
+    def readDict(self, dictfile):
+        self.dict.readDict(dictfile)
+
+    def appendDict(self, dictfile):
+        self.dict.appendDict(dictfile)
 
     def evaluate(self, corpus=200):
         error_count = 0
@@ -117,17 +140,14 @@ class CWSPerceptron:
         print "Decode:", time.clock() - start
         output.close()
 
-    def train(self, trainfile, batch_num=100, max_iter=200, learn_rate=0.01,
-              delta_thrd=0.00001, is_average=True):
+    def train(self, trainfile, batch_num=100, max_iter=200, learn_rate=1.0,
+              delta_thrd=0.001, is_average=True):
         # self.makelibsvmdata(r'train.data',max_corpus)
         print "Start training process."
         self.perceptron.loadFeatSize(self.dimension, len(self.state))
         self.perceptron.read_train_file(trainfile)
         self.perceptron.printinfo()
-        # self.perceptron.train_mini_batch(1000,500,0.01,10,False)
-        self.perceptron.train_mini_batch(batch_num, max_iter, learn_rate,
-                                         delta_thrd, is_average)
-        # self.perceptron.train_sgd(max_iter, learn_rate, delta_thrd, is_average)
+        self.perceptron.train_sgd(max_iter, learn_rate, delta_thrd, is_average)
         self.perceptron.saveModel()
         print "Training process done."
         print "Multi-class Perceptron Model had been saved."
@@ -148,10 +168,12 @@ class CWSPerceptron:
             features = self.GetFeature(self.corpus[i])
             vec = self.Feature2Vec(features)
             for j in range(len(taglist)):
-                output_data.write(taglist[j])
+                output_data.write(str(self.state.index(taglist[j])))
                 output_data.write('\t')
                 keyset = list(vec[j].keys())
                 keyset = sorted(keyset)
+                if len(keyset) < 1:
+                    output_data.write('0:1')
                 for key in keyset:
                     output_data.write(str(key))
                     output_data.write(':')
@@ -249,17 +271,24 @@ class CWSPerceptron:
         return a list of features
         """
         features = []
-#        head = sent[0]
-#        tail = sent[-1]
         for i in range(len(sent)):
             left2 = sent[i - 2] if i - 2 >= 0 else '#'
             left1 = sent[i - 1] if i - 1 >= 0 else '#'
             mid = sent[i]
             right1 = sent[i + 1] if i + 1 < len(sent) else '#'
             right2 = sent[i + 2] if i + 2 < len(sent) else '#'
+
+            # get dictionary imformation
+            if self.dict.dic.has_key(mid):
+                MWL = str(self.dict.dic[mid][0])
+                t0 = self.dict.dic[mid][1]
+            else:
+                MWL = '0'
+                t0 = '#'
+
             feat = [left2, left1, mid, right1, right2, left2 + left1,
-                    left1 + mid, mid + right1, right1 + right2, left1 + right1]
-            # feat=[left1,mid,right1,left1+mid,mid+right1]
+                    left1 + mid, mid + right1, right1 + right2, left1 + right1,
+                    MWL + t0, left1 + t0, mid + t0, right1 + t0]
             features.append(feat)
 
         return features
@@ -284,11 +313,17 @@ class CWSPerceptron:
                         key = self.unigram_feat_id[
                             feat[it]] + self.unigram_feat_num * it
                         featVec[key] = 1
-                else:
+                elif it < 10:
                     if self.bigram_feat_id.has_key(feat[it]):
                         key = self.bigram_feat_id[feat[it]]
                         key += self.unigram_feat_num * 5 + \
                             self.bigram_feat_num * (it - 5)
+                        featVec[key] = 1
+                else:
+                    if self.dict_feat_id.has_key(feat[it]):
+                        key = self.dict_feat_id[feat[it]]
+                        key += self.unigram_feat_num * 5 + self.bigram_feat_num * \
+                            5 + self.dict_feat_num * (it - 10)
                         featVec[key] = 1
 #                        if key>self.dimension:
 #                            self.dimension = key
@@ -385,16 +420,20 @@ class CWSPerceptron:
             # record the feats, allocate the id of feature
             for feat in feats:
                 for it in range(len(feat)):
-                    if it < 5:
+                    if it < 5:  # unigram feature
                         if not self.unigram_feat_id.has_key(feat[it]):
                             self.unigram_feat_num += 1
                             self.unigram_feat_id[
                                 feat[it]] = self.unigram_feat_num
-                    else:
+                    elif it < 10:  # bigram feature
                         if not self.bigram_feat_id.has_key(feat[it]):
                             self.bigram_feat_num += 1
                             self.bigram_feat_id[
                                 feat[it]] = self.bigram_feat_num
+                    else:  # dictionary information feature
+                        if not self.dict_feat_id.has_key(feat[it]):
+                            self.dict_feat_num += 1
+                            self.dict_feat_id[feat[it]] = self.dict_feat_num
 
         # calculate the probability of tag
         initsum = sum(self.init_prb.values())
@@ -404,7 +443,8 @@ class CWSPerceptron:
             tmpsum = sum(self.trans_prb[x].values())
             for y in self.trans_prb[x].keys():
                 self.trans_prb[x][y] = float(self.trans_prb[x][y]) / tmpsum
-        self.dimension = self.unigram_feat_num * 5 + self.bigram_feat_num * 5
+        self.dimension = self.unigram_feat_num * 5 + \
+            self.bigram_feat_num * 5 + self.dict_feat_num * 4
         # calc the log probability
         for s in self.state:
             if self.init_prb[s] != 0.:
