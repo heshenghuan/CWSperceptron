@@ -1,5 +1,4 @@
-dict.utf8
+*.utf8
+*.pyc
 
-MultiPerceptron.pyc
-CWSPv4.pyc
-CWSPv5.pyc
+test.py
