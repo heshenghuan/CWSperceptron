@@ -16,7 +16,7 @@ from cPickle import dump
 from cPickle import load
 
 
-CHANGED = "Updated on 13:53 2015-12-17"
+CHANGED = "Updated on 15:23 2015-12-31"
 
 
 class CWSPerceptron:
@@ -42,7 +42,24 @@ class CWSPerceptron:
         self.bigram_feat_id = {}
         self.dict_feat_num = 0
         self.dict_feat_id = {}
+        self.type_feat_num = 5**5
         self.path = r'./'
+
+        self.nums = []
+        self.dates = [u"年", u"月", u"日"]
+        self.names = []
+        inputs1 = codecs.open(r'Chinese_num.txt', 'r')
+        for line in inputs1.readlines():
+            rawText = line.strip().split()
+            for w in rawText:
+                self.nums.append(w)
+        inputs1.close()
+        inputs2 = codecs.open(r'names.txt', 'r')
+        for line in inputs2.readlines():
+            rawText = line.strip().split()
+            for w in rawText:
+                self.names.append(w)
+        inputs2.close()
 
     def setSavePath(self, path):
         self.path = path
@@ -97,7 +114,7 @@ class CWSPerceptron:
         inputs1.close()
         print "Loading process done."
         self.dimension = self.unigram_feat_num * 5 + \
-            self.bigram_feat_num * 5 + self.dict_feat_num * 4
+            self.bigram_feat_num * 5 + self.dict_feat_num * 4 + self.type_feat_num
 
     def loadDict(self, dictfile):
         self.dict.loadDict(dictfile)
@@ -271,24 +288,38 @@ class CWSPerceptron:
         return a list of features
         """
         features = []
+
         for i in range(len(sent)):
             left2 = sent[i - 2] if i - 2 >= 0 else '#'
             left1 = sent[i - 1] if i - 1 >= 0 else '#'
             mid = sent[i]
             right1 = sent[i + 1] if i + 1 < len(sent) else '#'
             right2 = sent[i + 2] if i + 2 < len(sent) else '#'
-
-            # get dictionary imformation
+            # print self.dict.dic.has_key(mid),
             if self.dict.dic.has_key(mid):
                 MWL = str(self.dict.dic[mid][0])
                 t0 = self.dict.dic[mid][1]
+                # print MWL,t0
             else:
                 MWL = '0'
                 t0 = '#'
-
-            feat = [left2, left1, mid, right1, right2, left2 + left1,
-                    left1 + mid, mid + right1, right1 + right2, left1 + right1,
-                    MWL + t0, left1 + t0, mid + t0, right1 + t0]
+            # print MWL,t0
+            featcode = 0
+            chars = [left2, left1, mid, right1, right2]
+            for i in range(len(chars)):
+                if chars[i].encode('utf-8') in self.nums:
+                    featcode += 0
+                elif chars[i] in self.dates:
+                    featcode += 5**i
+                elif (u"a" <= chars[i] and chars[i] <= u"z") or (u"A" <= chars[i] and chars[i] <= u"Z"):
+                    featcode += 5**i * 2
+                elif chars[i].encode('utf-8') in self.names:
+                    featcode += 5**i * 3
+                else:
+                    featcode += 5**i * 4
+            featcode += 1
+            feat = [left2, left1, mid, right1, right2, left2 + left1, left1 + mid, mid + right1,
+                    right1 + right2, left1 + right1, MWL + t0, left1 + t0, mid + t0, right1 + t0, featcode]
             features.append(feat)
 
         return features
@@ -310,23 +341,22 @@ class CWSPerceptron:
             for it in range(len(feat)):
                 if it < 5:
                     if self.unigram_feat_id.has_key(feat[it]):
-                        key = self.unigram_feat_id[
-                            feat[it]] + self.unigram_feat_num * it
+                        key = self.unigram_feat_id[feat[it]]+self.unigram_feat_num*it
                         featVec[key] = 1
                 elif it < 10:
                     if self.bigram_feat_id.has_key(feat[it]):
                         key = self.bigram_feat_id[feat[it]]
-                        key += self.unigram_feat_num * 5 + \
-                            self.bigram_feat_num * (it - 5)
+                        key += self.unigram_feat_num*5 + self.bigram_feat_num*(it-5)
                         featVec[key] = 1
-                else:
+                elif it < 14:
                     if self.dict_feat_id.has_key(feat[it]):
                         key = self.dict_feat_id[feat[it]]
-                        key += self.unigram_feat_num * 5 + self.bigram_feat_num * \
-                            5 + self.dict_feat_num * (it - 10)
+                        key += self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*(it-10)
                         featVec[key] = 1
-#                        if key>self.dimension:
-#                            self.dimension = key
+                else:
+                    key = feat[it]
+                    key += self.unigram_feat_num*5 + self.bigram_feat_num*5 + self.dict_feat_num*4
+                    featVec[key] = 1
             featVecs.append(featVec)
 
         return featVecs
@@ -430,7 +460,7 @@ class CWSPerceptron:
                             self.bigram_feat_num += 1
                             self.bigram_feat_id[
                                 feat[it]] = self.bigram_feat_num
-                    else:  # dictionary information feature
+                    elif it < 14:  # dictionary information feature
                         if not self.dict_feat_id.has_key(feat[it]):
                             self.dict_feat_num += 1
                             self.dict_feat_id[feat[it]] = self.dict_feat_num
@@ -444,7 +474,7 @@ class CWSPerceptron:
             for y in self.trans_prb[x].keys():
                 self.trans_prb[x][y] = float(self.trans_prb[x][y]) / tmpsum
         self.dimension = self.unigram_feat_num * 5 + \
-            self.bigram_feat_num * 5 + self.dict_feat_num * 4
+            self.bigram_feat_num * 5 + self.dict_feat_num * 4 + self.type_feat_num
         # calc the log probability
         for s in self.state:
             if self.init_prb[s] != 0.:
