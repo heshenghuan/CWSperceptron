@@ -89,7 +89,7 @@ class MultiPerceptron(object):
             print "Saving model file under folder:%s." % path
         output = codecs.open(path, 'w')
         output.write("%d %d\n" % (self.class_num, self.feat_size + 1))
-        for i in range(self.feat_size+1):
+        for i in range(self.feat_size + 1):
             for j in range(self.class_num):
                 output.write("%.2f " % self.Theta[j, i])
             output.write('\n')
@@ -108,7 +108,7 @@ class MultiPerceptron(object):
         try:
             inputs = codecs.open(path, 'r')
             line_id = 0
-            self.label_set = ['0', '1', '2', '3']
+            self.label_set = []
             for line in inputs.readlines():
                 raw = line.strip()
                 if raw == '':
@@ -116,6 +116,8 @@ class MultiPerceptron(object):
                 raw = raw.split(' ')
                 if line_id == 0:
                     self.loadFeatSize(int(raw[1]) - 1, int(raw[0]))
+                    for i in range(int(raw[0])):
+                        self.label_set.append('%d' % i)
                     line_id += 1
                 else:
                     for i in range(len(raw)):
@@ -123,7 +125,7 @@ class MultiPerceptron(object):
                     line_id += 1
             return True
         except IOError:
-            print "Corresponding file \"label_set.pkl\" doesn\'t exist!"
+            print "Corresponding file \"%s\" doesn\'t exist!" % path
             return False
 
     def loadLabelSet(self, label_set=None):
@@ -253,7 +255,8 @@ class MultiPerceptron(object):
         pred = []
         C = self.class_num
         for i in range(C):
-            score = sum(self.Theta[i, key]*val for key, val in sample.items())
+            score = sum(self.Theta[i, key] *
+                        val for key, val in sample.items())
             pred.append(score)
 
         return pred
@@ -345,7 +348,7 @@ class MultiPerceptron(object):
             last = loss
 
         if is_average:
-            self.Theta = omega_sum/(rd*batch_num)
+            self.Theta = omega_sum / (rd * batch_num)
         else:
             self.Theta = omega
         stop_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -405,7 +408,7 @@ class MultiPerceptron(object):
             last = loss
 
         if is_average:
-            self.Theta = omega_sum/(rd*N)
+            self.Theta = omega_sum / (rd * N)
         else:
             # self.Theta = omega
             self.Theta = omega
@@ -434,7 +437,7 @@ class MultiPerceptron(object):
         # time1 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         while rd < max_iter * N:
             if rd % N == 0 and rd != 0:
-                loop = rd/N
+                loop = rd / N
                 error_count, loss = self.__getCost()
                 acc = 1 - error_count / float(N)
                 # time2 = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -466,7 +469,7 @@ class MultiPerceptron(object):
                 omega_sum += omega
 
         if is_average:
-            self.Theta = omega_sum/(rd)
+            self.Theta = omega_sum / (rd)
         else:
             self.Theta = omega
         stop_clock = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
