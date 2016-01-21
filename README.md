@@ -8,16 +8,25 @@
 
 ##File specification
 * MultiPerceptron.py<br>
-  The multiclass perceptron using one-vs-all method.
+  The multiclass perceptron.
   
 * Dict.py<br>
   A script used to get dictionary information. 
   
 * CWSPv4.py<br>
-  CWSperceptron with 10+punc features.
+  CWSperceptron with 10+punc+dict+type features.<br>
+  But only used unigram&bigram list to record feature.
   
-* CWSPv5.py<br>
-  CWSperceptron with 10+punc+dict+type features.
+* CWSPv6.py<br>
+  CWSperceptron with 10+punc+dict+type features.<br>
+  But used unigram, bigram and trigram list to record feature.
+
+* resources/*<br>
+  resource files include dictionary and some special characters list.
+
+* testCase/*<br>
+  test files that used for pretreatment, training and segmentation.<br>
+  You can use the python file processing corresponding corpus.
 
 #####notes: 
 10: 10 base features + punctution information feature<br>
