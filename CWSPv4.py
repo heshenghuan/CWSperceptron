@@ -48,13 +48,13 @@ class CWSPerceptron:
         self.nums = []
         self.dates = [u"年", u"月", u"日"]
         self.names = []
-        inputs1 = codecs.open(r'Chinese_num.txt', 'r')
+        inputs1 = codecs.open(r'./resources/Chinese_num.txt', 'r')
         for line in inputs1.readlines():
             rawText = line.strip().split()
             for w in rawText:
                 self.nums.append(w)
         inputs1.close()
-        inputs2 = codecs.open(r'names.txt', 'r')
+        inputs2 = codecs.open(r'./resources/names.txt', 'r')
         for line in inputs2.readlines():
             rawText = line.strip().split()
             for w in rawText:
@@ -202,7 +202,12 @@ class CWSPerceptron:
         return filecount
 
     def classifiy_score(self, featureVec):
-        return self.perceptron.scoreout(featureVec)
+        tmp = self.perceptron.scoreout(featureVec)
+        ans = {}
+        for key in tmp.keys():
+            ans[self.state[int(key)]] = tmp[key]
+        # return self.perceptron.scoreout(featureVec)
+        return ans
         # return self.perceptron.probout(featureVec)
 
     def getEmitPrb(self, score):
